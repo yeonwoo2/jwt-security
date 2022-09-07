@@ -6,15 +6,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.context.SecurityContextPersistenceFilter;
-import org.springframework.web.filter.CorsFilter;
 import study.jwt.config.jwt.JwtAuthenticationFilter;
 import study.jwt.config.jwt.JwtAuthorizationFilter;
-import study.jwt.filter.MyFilter3;
 import study.jwt.repository.UserRepository;
 
 @Configuration
