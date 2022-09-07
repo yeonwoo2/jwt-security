@@ -1,36 +1,59 @@
 package study.jwt.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextPersistenceFilter;
 import org.springframework.web.filter.CorsFilter;
+import study.jwt.config.jwt.JwtAuthenticationFilter;
+import study.jwt.config.jwt.JwtAuthorizationFilter;
+import study.jwt.filter.MyFilter3;
+import study.jwt.repository.UserRepository;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig{
+// WebSecurityConfigurerAdapter는 Filter chain을 구성하는 Configuration클래스
+    
+    private final CorsConfig corsConfig;
+    private final UserRepository userRepository;
 
-    private final CorsFilter corsFilter;
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http.csrf().disable();
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) //세션 사용 안함
+    @Bean
+    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf().disable()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
-                .addFilter(corsFilter) //@CrossOrigin(인증X), 시큐리티 필터에 등록 인증(O)
                 .formLogin().disable()
-                .httpBasic().disable() //http 기본 인증방식
-                .authorizeRequests()
-                .antMatchers("/api/v1/user/**")
-                .access("hasRole('ROLE_USER') or hasRole('ROLE_MANAGER') or hasRole('ROLE_ADMIN')")
-                .antMatchers("/api/v1/manager/**")
-                .access("hasRole('ROLE_MANAGER') or hasRole('ROLE_ADMIN')")
-                .antMatchers("/api/v1/admin/**")
-                .access("hasRole('ROLE_ADMIN')")
-                .anyRequest().permitAll();
+                .httpBasic().disable()
+                .apply(new MyCustomDsl()) // 커스텀 필터 등록
+                .and()
+                .authorizeRequests(authroize -> authroize.antMatchers("/api/v1/user/**")
+                        .access("hasRole('ROLE_USER') or hasRole('ROLE_MANAGER') or hasRole('ROLE_ADMIN')")
+                        .antMatchers("/api/v1/manager/**")
+                        .access("hasRole('ROLE_MANAGER') or hasRole('ROLE_ADMIN')")
+                        .antMatchers("/api/v1/admin/**")
+                        .access("hasRole('ROLE_ADMIN')")
+                        .anyRequest().permitAll())
+                .build();
+    }
 
+    public class MyCustomDsl extends AbstractHttpConfigurer<MyCustomDsl, HttpSecurity> {
+        @Override
+        public void configure(HttpSecurity http) throws Exception {
+            AuthenticationManager authenticationManager = http.getSharedObject(AuthenticationManager.class);
+            http
+                    .addFilter(corsConfig.corsFilter())
+                    .addFilter(new JwtAuthenticationFilter(authenticationManager))
+                    .addFilter(new JwtAuthorizationFilter(authenticationManager, userRepository));
+        }
     }
 }
